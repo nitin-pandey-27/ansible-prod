@@ -269,7 +269,9 @@ OUTPUT
 9f5e0acc1f346641, started, etcd01, https://192.168.1.101:2380, https://192.168.1.101:2379
 
 
+https://github.com/nitin-pandey-27/ansible-prod/blob/master/external-etcd-cluster.png
 
+https://github.com/nitin-pandey-27/ansible-prod/blob/master/stacked-etcd-cluster.png
 
 
 

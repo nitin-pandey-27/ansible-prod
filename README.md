@@ -4,6 +4,8 @@ Please check the file pre-requisites.
 
 Always run the command -v flag 
 
+Check file - k8s-ansible-multi-master - for TEXT format. 
+
 # STEPS OF INSTALLATION 
 
 ansible-playbook -v -i inventory/mycluster playbooks/kubectl.yaml

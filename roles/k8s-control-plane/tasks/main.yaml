@@ -1,0 +1,245 @@
+- name: Generate SSH keys on master nodes
+  shell: ssh-keygen -b 4096 -t rsa -f /root/.ssh/id_rsa -q -N ""
+  args:
+    creates: /root/.ssh/id_rsa
+
+- name: fetch all public ssh keys
+  shell: cat ~/.ssh/id_rsa.pub
+  register: ssh_keys
+  tags:
+  - ssh
+
+- name: check keys
+  debug: msg="{{ ssh_keys.stdout }}"
+  tags:
+  - ssh
+
+- name: deploy keys on all servers
+  authorized_key: user=root key="{{ item[0] }}"
+  delegate_to: "{{ item[1] }}"
+  with_nested:
+  - "{{ ssh_keys.stdout }}"
+  - "{{groups['k8s-nodes']}}"
+
+
+- name: Download K8S Control Plane Binaries 
+  shell: |
+   /usr/bin/mkdir -p /etc/kubernetes/config
+   cd /root/
+   /usr/bin/wget \ 
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kube-apiserver" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kube-controller-manager" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kube-scheduler" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl"
+
+
+- name: Cofigure K8s Control Plane binaries 
+  shell: |
+   cd /root/
+   chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
+   /usr/bin/mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
+
+
+- name: Delete /var/lib/kubernetes if exists
+  file: 
+   path: /var/lib/kubernetes
+   state: absent
+  tags: kube-apiserver
+
+- name: Copy files to /var/lib/kubernetes
+  shell: | 
+   /usr/bin/mkdir -p /var/lib/kubernetes/
+   cp ca.crt ca.key kube-apiserver.crt kube-apiserver.key \
+   service-account.key service-account.crt \
+   etcd-server.key etcd-server.crt \
+   encryption-config.yaml \
+   /var/lib/kubernetes/
+  tags: kube-apiserver
+
+
+- name: Get Private IP of each host
+  shell: |
+    /usr/sbin/ip addr show enp0s3 | grep "inet " | awk '{print $2}' | cut -d / -f 1
+  register: PRIVATE_IP
+  tags: kube-apiserver
+
+- name: Print PRIVATE_IP of each host
+  debug: msg="Host private {{PRIVATE_IP}}"
+  tags: kube-apiserver
+
+  
+- name: Remove kube-apiserver.service file if exist 
+  file:
+    path: /etc/systemd/system/kube-apiserver.service
+    state: absent
+  tags: kube-apiserver
+
+- name: Create kube-apiserver.service file 
+  lineinfile:
+    path: /etc/systemd/system/kube-apiserver.service
+    create: yes
+    state: present
+    line: |  
+     [Unit]
+     Description=Kubernetes API Server
+     Documentation=https://github.com/kubernetes/kubernetes
+     [Service]
+     ExecStart=/usr/local/bin/kube-apiserver \
+     --advertise-address={{PRIVATE_IP.stdout}} \
+     --allow-privileged=true \
+     --apiserver-count=3 \
+     --audit-log-maxage=30 \
+     --audit-log-maxbackup=3 \
+     --audit-log-maxsize=100 \
+     --audit-log-path=/var/log/audit.log \
+     --authorization-mode=Node,RBAC \
+     --bind-address=0.0.0.0 \
+     --client-ca-file=/var/lib/kubernetes/ca.crt \
+     --enable-admission-plugins=NodeRestriction,ServiceAccount \
+     --enable-swagger-ui=true \
+     --enable-bootstrap-token-auth=true \
+     --etcd-cafile=/var/lib/kubernetes/ca.crt \
+     --etcd-certfile=/var/lib/kubernetes/etcd-server.crt \
+     --etcd-keyfile=/var/lib/kubernetes/etcd-server.key \
+     --etcd-servers=https://192.168.1.174:2379,https://192.168.1.101:2379 \
+     --event-ttl=1h \
+     --encryption-provider-config=/var/lib/kubernetes/encryption-config.yaml \
+     --kubelet-certificate-authority=/var/lib/kubernetes/ca.crt \
+     --kubelet-client-certificate=/var/lib/kubernetes/kube-apiserver.crt \
+     --kubelet-client-key=/var/lib/kubernetes/kube-apiserver.key \
+     --kubelet-https=true \
+     --runtime-config=api/all \
+     --service-account-key-file=/var/lib/kubernetes/service-account.crt \
+     --service-cluster-ip-range=10.96.0.0/24 \
+     --service-node-port-range=30000-32767 \
+     --tls-cert-file=/var/lib/kubernetes/kube-apiserver.crt \
+     --tls-private-key-file=/var/lib/kubernetes/kube-apiserver.key \
+     --v=2
+     Restart=on-failure
+     RestartSec=5
+     [Install]
+     WantedBy=multi-user.target
+  tags: kube-apiserver
+
+- name: Copy kube-controller-manager 
+  shell: | 
+   /usr/bin/cp kube-controller-manager.kubeconfig /var/lib/kubernetes/
+  tags: kube-apiserver
+
+- name: Remove kube-controller-manager.service file 
+  file:
+    path: /etc/systemd/system/kube-controller-manager.service
+    state: absent
+  tags: kube-apiserver
+
+- name: Create kube-controller-manager.service file 
+  lineinfile:
+    path: /etc/systemd/system/kube-controller-manager.service
+    create: yes
+    state: present
+    line: |
+     [Unit]
+     Description=Kubernetes Controller Manager
+     Documentation=https://github.com/kubernetes/kubernetes
+     [Service]
+     ExecStart=/usr/local/bin/kube-controller-manager \
+     --address=0.0.0.0 \
+     --cluster-cidr=192.168.1.0/24 \
+     --cluster-name=kubernetes \
+     --cluster-signing-cert-file=/var/lib/kubernetes/ca.crt \
+     --cluster-signing-key-file=/var/lib/kubernetes/ca.key \
+     --kubeconfig=/var/lib/kubernetes/kube-controller-manager.kubeconfig \
+     --leader-elect=true \
+     --root-ca-file=/var/lib/kubernetes/ca.crt \
+     --service-account-private-key-file=/var/lib/kubernetes/service-account.key \
+     --service-cluster-ip-range=10.96.0.0/24 \
+     --use-service-account-credentials=true \
+     --v=2
+     Restart=on-failure
+     RestartSec=5
+     [Install]
+     WantedBy=multi-user.target
+  tags: kube-apiserver
+
+
+- name: Copy kube-scheduler
+  shell: |
+   /usr/bin/cp kube-scheduler.kubeconfig /var/lib/kubernetes/
+  tags: kube-apiserver
+
+- name: Remove kube-scheduler.service 
+  file:
+    path: /etc/systemd/system/kube-scheduler.service
+    state: absent
+  tags: kube-apiserver
+
+- name: Create kube-scheduler.service file
+  lineinfile:
+    path: /etc/systemd/system/kube-scheduler.service
+    create: yes
+    state: present
+    line: |
+     [Unit]
+     Description=Kubernetes Scheduler
+     Documentation=https://github.com/kubernetes/kubernetes
+     [Service]
+     ExecStart=/usr/local/bin/kube-scheduler \
+     --kubeconfig=/var/lib/kubernetes/kube-scheduler.kubeconfig \
+     --address=127.0.0.1 \
+     --leader-elect=true \
+     --v=2
+     Restart=on-failure
+     RestartSec=5
+     [Install]
+     WantedBy=multi-user.target
+  tags: kube-apiserver
+
+
+- name: Daemon Reload 
+  systemd:
+    daemon_reload: yes
+  tags: kube-apiserver
+
+- name: Open ports
+  firewalld:
+    port: "{{item}}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 6443/tcp
+  tags: kube-apiserver
+
+- name: Enable port ranges in firewalld
+  firewalld:
+    port: 30000-32767/tcp
+    permanent: yes
+    state: enabled
+  tags: kube-apiserver
+
+- name: Reload firewall
+  service:
+    name: firewalld
+    state: restarted
+  tags: kube-apiserver
+
+- name: Starting and Enabling kube-apiserver Service
+  service:
+   name: kube-apiserver
+   state: started
+   enabled: yes
+  tags: kube-apiserver
+
+- name: Starting and Enabling kube-controller-manager Service
+  service:
+   name: kube-controller-manager
+   state: started
+   enabled: yes
+  tags: kube-apiserver
+
+- name: Starting and Enabling kube-scheduler Service
+  service:
+   name: kube-scheduler
+   state: started
+   enabled: yes
+  tags: kube-apiserver
+

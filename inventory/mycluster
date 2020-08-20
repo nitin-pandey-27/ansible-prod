@@ -1,0 +1,28 @@
+[workstation]
+loadbalancer ansible_host=192.168.1.60
+
+#DC1 masters
+[k8s-nodes]
+loadbalancer ansible_host=192.168.1.60
+master01 ansible_host=192.168.1.195
+master02 ansible_host=192.168.1.216
+worker01 ansible_host=192.168.1.172
+worker02 ansible_host=192.168.1.87
+etcd01 ansible_host=192.168.1.101
+etcd02 ansible_host=192.168.1.174
+
+[dc1-k8s-masters]
+master01 ansible_host=192.168.1.195
+master02 ansible_host=192.168.1.216
+
+#DC1 virtualmachines
+[dc1-k8s-workers-vm]
+worker01 ansible_host=192.168.1.172
+worker02 ansible_host=192.168.1.87
+
+[dc1-k8s-etcd-vm]
+etcd01 ansible_host=192.168.1.101
+etcd02 ansible_host=192.168.1.174
+
+[dc1-k8s-lb-vm]
+loadbalancer ansible_host=192.168.1.60

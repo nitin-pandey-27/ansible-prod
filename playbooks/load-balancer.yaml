@@ -1,0 +1,6 @@
+- hosts: dc1-k8s-lb-vm
+  become: yes
+  roles:
+    - load-balancer
+
+

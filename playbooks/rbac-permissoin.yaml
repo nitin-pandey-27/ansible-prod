@@ -1,0 +1,6 @@
+- hosts: master01
+  become: yes
+  roles:
+    - rbac-permissoin
+
+

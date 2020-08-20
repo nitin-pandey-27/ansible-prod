@@ -1,0 +1,20 @@
+- name: Open ports
+  firewalld:
+    port: "{{item}}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 10250/tcp
+    - 53/tcp
+    - 53/udp
+    - 9153/tcp
+    - 8080/tcp
+    - 6783/tcp
+
+
+- name: Firewalld restart
+  service:
+   name: firewalld
+   state: restarted
+   enabled: yes
+

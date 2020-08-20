@@ -1,0 +1,6 @@
+- hosts: workstation
+  become: yes
+  roles:
+    - config-certs
+
+

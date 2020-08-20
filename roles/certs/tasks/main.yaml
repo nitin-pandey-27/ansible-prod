@@ -1,0 +1,48 @@
+- name: Create a directory if it does not exist
+  file:
+    path: /root/k8s-hard-way/certs
+    state: directory
+
+- name: Generate the CA certificates 
+  shell: | 
+    cd /root/k8s-hard-way/certs
+    /usr/bin/openssl genrsa -out ca.key 4096
+    /usr/bin/sed -i '0,/RANDFILE/{s/RANDFILE/\#&/}' /etc/ssl/openssl.cnf
+    /usr/bin/openssl req -new -key ca.key -subj "/CN=KUBERNETES-CA" -out ca.csr
+    /usr/bin/openssl x509 -req -in ca.csr -signkey ca.key -CAcreateserial  -out ca.crt -days 1000
+
+- name: Generate Admin Client Certificate 
+  shell: | 
+   cd /root/k8s-hard-way/certs
+   /usr/bin/openssl genrsa -out admin.key 4096
+   /usr/bin/openssl req -new -key admin.key -subj "/CN=admin/O=system:masters" -out admin.csr
+   /usr/bin/openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out admin.crt -days 1000
+
+- name: Generate kube-controller-manager Client Certificate 
+  shell: |
+   cd /root/k8s-hard-way/certs
+   /usr/bin/openssl genrsa -out kube-controller-manager.key 4096
+   /usr/bin/openssl req -new -key kube-controller-manager.key -subj "/CN=system:kube-controller-manager" -out kube-controller-manager.csr
+   /usr/bin/openssl x509 -req -in kube-controller-manager.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out kube-controller-manager.crt -days 1000
+
+- name: Generate kube-proxy client certificate 
+  shell: |
+   cd /root/k8s-hard-way/certs 
+   /usr/bin/openssl genrsa -out kube-proxy.key 4096
+   /usr/bin/openssl req -new -key kube-proxy.key -subj "/CN=system:kube-proxy" -out kube-proxy.csr
+   /usr/bin/openssl x509 -req -in kube-proxy.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out kube-proxy.crt -days 1000
+
+- name: Generate kube-schedular Client Certificate
+  shell: |
+   cd /root/k8s-hard-way/certs
+   /usr/bin/openssl genrsa -out kube-scheduler.key 4096
+   /usr/bin/openssl req -new -key kube-scheduler.key -subj "/CN=system:kube-scheduler" -out kube-scheduler.csr
+   /usr/bin/openssl x509 -req -in kube-scheduler.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out kube-scheduler.crt -days 1000
+
+- name: Generate Service Account Key Pair
+  shell: |
+   cd /root/k8s-hard-way/certs
+   /usr/bin/openssl genrsa -out service-account.key 4096
+   /usr/bin/openssl req -new -key service-account.key -subj "/CN=service-accounts" -out service-account.csr
+   /usr/bin/openssl x509 -req -in service-account.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out service-account.crt -days 1000
+

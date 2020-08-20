@@ -1,0 +1,66 @@
+- name: Delete existing weave net
+  shell: |
+   /usr/local/bin/kubectl delete daemonset --all -n kube-system
+  tags: weave
+
+
+- name: Get kubectl version and encode it to base64
+  shell: |
+    /usr/local/bin/kubectl version | base64 | tr -d '\n'
+  register: VERSION
+  tags: weave
+
+- name: Open ports
+  firewalld:
+    port: "{{item}}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 6784/tcp
+  tags: weave
+
+
+- name: Firewalld restart
+  service:
+   name: firewalld
+   state: restarted
+   enabled: yes
+  tags: weave
+
+
+- name: Deploy Weave network
+  shell: | 
+   /usr/local/bin/kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version={{VERSION.stdout}}"
+  tags: weave
+
+- name: Open ports
+  firewalld:
+    port: "{{item}}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 53/tcp
+    - 53/udp
+    - 9153/tcp
+    - 8080/tcp
+  tags: dns
+
+
+- name: Firewalld restart
+  service:
+   name: firewalld
+   state: restarted
+   enabled: yes
+  tags: dns
+
+#- name: Delete coredns pods running on master 
+#  shell: /usr/local/bin/kubectl delete deploy coredns -n kube-system
+#  tags: dns
+
+
+- name: Deploy core-dns 
+  shell: | 
+   /usr/local/bin/kubectl apply -f https://raw.githubusercontent.com/mmumshad/kubernetes-the-hard-way/master/deployments/coredns.yaml
+  tags: dns
+
+    

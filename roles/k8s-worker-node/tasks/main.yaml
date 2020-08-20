@@ -1,0 +1,243 @@
+- name: Disabling Swap on all nodes
+  shell: swapoff -a
+
+- name: Commenting Swap entries in /etc/fstab
+  replace:
+   path: /etc/fstab
+   regexp: '(^/.*swap*)'
+   replace: '# \1'
+
+- name: Create a directory if it does not exist
+  file:
+    path: /root/k8s-hard-way/certs
+    state: directory
+
+- name: Get Private IP of each host
+  shell: |
+    /usr/sbin/ip addr show enp0s3 | grep "inet " | awk '{print $2}' | cut -d / -f 1
+  register: PRIVATE_IP
+
+- name: Print PRIVATE_IP of each host
+  debug: msg="Host private {{PRIVATE_IP}}"
+
+- name: Get Hostname of each host
+  shell: |
+    /usr/bin/hostname -s
+  register: PEER_NAME
+
+- name: Print PEER_NAME of each host
+  debug: msg="Host name {{PEER_NAME}}"
+
+
+- name: Remove openssl-worker.cnf if it exist 
+  file:
+    path: /root/k8s-hard-way/certs/openssl-worker.cnf
+    state: absent
+
+
+- name: Create a openssl-worker.cnf file 
+  lineinfile:
+    path: /root/k8s-hard-way/certs/openssl-worker.cnf
+    create: yes
+    state: present
+    line: |
+     [req]
+     req_extensions = v3_req
+     distinguished_name = req_distinguished_name
+     [req_distinguished_name]
+     [ v3_req ]
+     basicConstraints = CA:FALSE
+     keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+     subjectAltName = @alt_names
+     [alt_names]
+     DNS.1 = {{PEER_NAME.stdout}}
+     IP.1 = {{PRIVATE_IP.stdout}}
+
+
+- name: Generate certs for kube-api server
+  shell: | 
+    cd /root/k8s-hard-way/certs
+    cp /root/ca.crt /root/ca.key /root/k8s-hard-way/certs/
+    /usr/bin/openssl genrsa -out worker.key 4096
+    /usr/bin/openssl req -new -key worker.key -subj "/CN=system:node:{{PEER_NAME.stdout}}/O=system:nodes" -out worker.csr -config openssl-worker.cnf
+    /usr/bin/openssl x509 -req -in worker.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out worker.crt \ 
+    -extensions v3_req -extfile openssl-worker.cnf -days 1000
+
+
+- name: Remove Kubeconfig file
+  file:
+   path: /root/k8s-hard-way/certs/{{PEER_NAME.stdout}}.kubeconfig
+   state: absent
+
+
+
+- name: Create kubelet configuration file
+  shell: |
+    cd /root/k8s-hard-way/certs
+    export LOADBALANCER_ADDRESS=192.168.1.60
+    /usr/local/bin/kubectl config set-cluster kubernetes-the-hard-way \
+    --certificate-authority=ca.crt \
+    --embed-certs=true \
+    --server=https://${LOADBALANCER_ADDRESS}:6443 \
+    --kubeconfig={{PEER_NAME.stdout}}.kubeconfig
+    /usr/local/bin/kubectl config set-credentials system:node:{{PEER_NAME.stdout}} \
+    --client-certificate=worker.crt \
+    --client-key=worker.key \
+    --embed-certs=true \
+    --kubeconfig={{PEER_NAME.stdout}}.kubeconfig
+    /usr/local/bin/kubectl config set-context default \
+    --cluster=kubernetes-the-hard-way \
+    --user=system:node:{{PEER_NAME.stdout}} \
+    --kubeconfig={{PEER_NAME.stdout}}.kubeconfig
+    /usr/local/bin/kubectl config use-context default --kubeconfig={{PEER_NAME.stdout}}.kubeconfig
+
+
+
+- name: Download K8S Worker Node Binaries
+  shell: |
+   cd /root/
+   /usr/bin/wget \    
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kube-proxy" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubelet"
+   chmod +x kubectl kube-proxy kubelet
+   /usr/bin/cp kubectl kube-proxy kubelet /usr/local/bin/
+   mkdir -p \
+   /etc/cni/net.d \
+   /opt/cni/bin \
+   /var/lib/kubelet \
+   /var/lib/kube-proxy \
+   /var/lib/kubernetes \
+   /var/run/kubernetes
+
+
+- name: Configure kubelet 
+  shell: | 
+   cd /root/k8s-hard-way/certs
+   /usr/bin/cp worker.key worker.crt /var/lib/kubelet/
+   /usr/bin/cp {{PEER_NAME.stdout}}.kubeconfig /var/lib/kubelet/kubeconfig
+   /usr/bin/cp ca.crt /var/lib/kubernetes/
+
+
+- name: Remove kubelet-config.yaml file if exist
+  file:
+    path: /var/lib/kubelet/kubelet-config.yaml
+    state: absent
+
+
+- name: Create kubelet-config.yaml file
+  lineinfile:
+    path: /var/lib/kubelet/kubelet-config.yaml
+    create: yes
+    state: present
+    line: |
+     kind: KubeletConfiguration
+     apiVersion: kubelet.config.k8s.io/v1beta1
+     authentication:
+       anonymous:
+        enabled: false
+       webhook:
+        enabled: true
+       x509:
+        clientCAFile: "/var/lib/kubernetes/ca.crt"
+     authorization:
+       mode: Webhook
+     clusterDomain: "cluster.local"
+     clusterDNS:
+     - "10.96.0.10"
+     resolvConf: "/run/systemd/resolve/resolv.conf"
+     runtimeRequestTimeout: "15m"
+
+
+- name: Remove kubelet.service file if exist
+  file:
+    path: /etc/systemd/system/kubelet.service
+    state: absent
+
+- name: Create kubelet.service file
+  lineinfile:
+    path: /etc/systemd/system/kubelet.service
+    create: yes
+    state: present
+    line: |
+     [Unit]
+     Description=Kubernetes Kubelet
+     Documentation=https://github.com/kubernetes/kubernetes
+     After=docker.service
+     Requires=docker.service
+     [Service]
+     ExecStart=/usr/local/bin/kubelet \
+     --config=/var/lib/kubelet/kubelet-config.yaml \
+     --image-pull-progress-deadline=2m \
+     --kubeconfig=/var/lib/kubelet/kubeconfig \
+     --tls-cert-file=/var/lib/kubelet/worker.crt \
+     --tls-private-key-file=/var/lib/kubelet/worker.key \
+     --network-plugin=cni \
+     --register-node=true \
+     --v=2
+     Restart=on-failure
+     RestartSec=5
+     [Install]
+     WantedBy=multi-user.target
+
+  
+- name: Create the kube-proxy-config.yaml configuration file
+  shell: | 
+   cp kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
+
+- name: Remove kube-proxy-config.yaml
+  file:
+    path: /var/lib/kube-proxy/kube-proxy-config.yaml
+    state: absent
+
+- name: Create kube-proxy-config.yaml
+  lineinfile:
+    path: /var/lib/kube-proxy/kube-proxy-config.yaml
+    create: yes
+    state: present
+    line: |
+     kind: KubeProxyConfiguration
+     apiVersion: kubeproxy.config.k8s.io/v1alpha1
+     clientConnection:
+      kubeconfig: "/var/lib/kube-proxy/kubeconfig"
+     mode: "iptables"
+     clusterCIDR: "192.168.1.0/24"
+
+
+- name: Remove kube-proxy.service
+  file:
+    path: /etc/systemd/system/kube-proxy.service
+    state: absent
+
+- name: Create kube-proxy.service
+  lineinfile:
+    path: /etc/systemd/system/kube-proxy.service
+    create: yes
+    state: present
+    line: |
+     [Unit]
+     Description=Kubernetes Kube Proxy
+     Documentation=https://github.com/kubernetes/kubernetes
+     [Service]
+     ExecStart=/usr/local/bin/kube-proxy \
+     --config=/var/lib/kube-proxy/kube-proxy-config.yaml
+     Restart=on-failure
+     RestartSec=5
+     [Install]
+     WantedBy=multi-user.target
+
+- name: Daemon Reload
+  systemd:
+    daemon_reload: yes
+
+- name: Starting and Enabling kubelet
+  service:
+   name: kubelet
+   state: started
+   enabled: yes
+
+- name: Starting and Enabling kube-proxy
+  service:
+   name: kube-proxy
+   state: started
+   enabled: yes

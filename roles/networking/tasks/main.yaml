@@ -1,0 +1,39 @@
+- name: Install systemd-resolved
+  yum: 
+   name: systemd-resolved
+   state: latest
+
+- name: Start systemd-resolved 
+  service:
+   name: systemd-resolved
+   state: started
+   enabled: yes
+
+- name: Remove the file if exist 
+  shell: |
+   rm -rf cni-plugins-amd64-v0.7.5.tgz*
+
+- name: Download the CNI Plugins required for weave
+  shell: |
+   /usr/bin/wget https://github.com/containernetworking/plugins/releases/download/v0.7.5/cni-plugins-amd64-v0.7.5.tgz
+   /usr/bin/tar -xzvf cni-plugins-amd64-v0.7.5.tgz --directory /opt/cni/bin/
+    
+#- name: Create a directory if it does not exist
+#  file:
+#    path: /run/systemd/resolve/
+#    state: directory
+
+#- name: Create resolv.conf file 
+#  file: 
+#   path: /run/systemd/resolve/resolv.conf
+#   state: touch
+
+#- name: Get kubectl version and encode it to base64
+#  shell: |
+#    /usr/local/bin/kubectl version | base64 | tr -d '\n'
+#  register: VERSION
+
+
+#- name: Deploy Weave network
+#  shell: |
+#   /usr/local/bin/kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version={{VERSION.stdout}}"

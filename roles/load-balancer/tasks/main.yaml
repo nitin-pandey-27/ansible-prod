@@ -1,0 +1,93 @@
+- name: Install HAPROXY
+  yum: 
+   name: haproxy
+   state: present 
+
+- name: Get Private IP of each host
+  shell: |
+    /usr/sbin/ip addr show enp0s8 | grep "inet " | awk '{print $2}' | cut -d / -f 1
+  register: PRIVATE_IP
+
+- name: Print PRIVATE_IP of each host
+  debug: msg="Host private {{PRIVATE_IP}}"
+
+- name: Get Hostname of each host
+  shell: |
+    /usr/bin/hostname -s
+  register: PEER_NAME
+  
+- name: Print PEER_NAME of each host
+  debug: msg="Host name {{PEER_NAME}}"
+  
+- name: Remove HAPROXY file if exist 
+  file:
+    path: /etc/haproxy/haproxy.cfg 
+    state: absent
+
+- name: Enable all ports for bind enable 
+  shell: |
+   /usr/sbin/setsebool -P haproxy_connect_any=1
+
+- name: Create HAPROXY CONFIG FILE
+  lineinfile:
+    path: /etc/haproxy/haproxy.cfg 
+    create: yes
+    state: present
+    line: |  
+     global
+       log 127.0.0.1 local0
+       maxconn 4096
+     defaults
+       log global
+       mode http
+       option httplog
+       option dontlognull
+       timeout connect 5s
+       timeout client 50s
+       timeout client-fin 50s
+       timeout server 50s
+       timeout tunnel 1h
+     frontend kubernetes
+       bind 192.168.1.60:6443
+       option tcplog
+       mode tcp
+       default_backend kubernetes-master-nodes
+     backend kubernetes-master-nodes
+       mode tcp
+       balance roundrobin
+       option tcp-check
+       server master01 192.168.1.195:6443 check fall 3 rise 2
+       server master02 192.168.1.216:6443 check fall 3 rise 2
+     listen stats # Define a listen section called "stats"
+       bind 192.168.1.60:9000 # Listen on localhost:9000
+       mode http
+       stats enable  # Enable stats page
+       stats hide-version  # Hide HAProxy version
+       stats realm Haproxy\ Statistics  # Title text for popup window
+       stats uri /haproxy_stats  # Stats URI
+       stats auth admin:password  # Authentication credentials
+
+- name: Open ports
+  firewalld:
+    port: "{{item}}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 9000/tcp
+    - 6443/tcp
+
+- name: Firewalld restart
+  service: 
+   name: firewalld
+   state: restarted
+   enabled: yes
+
+- name: Daemon Reload 
+  systemd:
+    daemon_reload: yes
+
+- name: Starting and Enabling haproxy Service
+  service:
+   name: haproxy
+   state: started
+   enabled: yes

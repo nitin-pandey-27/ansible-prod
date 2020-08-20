@@ -1,0 +1,17 @@
+- name: Install wget 
+  yum: 
+   name: wget
+   state: present
+
+- name: Installing Kubectl
+  shell: |
+   cd /tmp/
+   wget https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl
+   chmod +x /tmp/kubectl
+   mv /tmp/kubectl /usr/local/bin/
+
+- name: Check if kubectl installed on each node 
+  shell: |
+   /usr/local/bin/kubectl version --client
+
+

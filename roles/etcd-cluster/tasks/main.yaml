@@ -1,0 +1,93 @@
+- name: Download and extract etcd binaries 
+  shell: |
+   cd /root/
+   /usr/bin/wget "https://github.com/coreos/etcd/releases/download/v3.3.9/etcd-v3.3.9-linux-amd64.tar.gz"
+   /usr/bin/tar -xvf etcd-v3.3.9-linux-amd64.tar.gz
+   /usr/bin/mv etcd-v3.3.9-linux-amd64/etcd* /usr/local/bin/
+
+
+- name: Cofigure etcd server 
+  shell: |
+   cd /root/
+   mkdir -p /etc/etcd /var/lib/etcd
+   cp ca.crt etcd-server.key etcd-server.crt /etc/etcd/
+
+
+- name: Get Private IP of each host
+  shell: |
+    /usr/sbin/ip addr show enp0s3 | grep "inet " | awk '{print $2}' | cut -d / -f 1
+  register: PRIVATE_IP
+
+- name: Print PRIVATE_IP of each host
+  debug: msg="Host private {{PRIVATE_IP}}"
+
+- name: Get Hostname of each host
+  shell: |
+    /usr/bin/hostname -s
+  register: PEER_NAME
+  
+- name: Print PEER_NAME of each host
+  debug: msg="Host name {{PEER_NAME}}"
+
+  
+- name: Remove file if exist 
+  file:
+    path: /etc/systemd/system/etcd.service
+    state: absent
+
+- name: Create ETCD Config File
+  lineinfile:
+    path: /etc/systemd/system/etcd.service
+    create: yes
+    state: present
+    line: |  
+     [Unit]
+     Description=etcd
+     Documentation=https://github.com/coreos
+     [Service]
+     ExecStart=/usr/local/bin/etcd \
+     --name {{PEER_NAME.stdout}} \
+     --cert-file=/etc/etcd/etcd-server.crt \
+     --key-file=/etc/etcd/etcd-server.key \
+     --peer-cert-file=/etc/etcd/etcd-server.crt \
+     --peer-key-file=/etc/etcd/etcd-server.key \
+     --trusted-ca-file=/etc/etcd/ca.crt \
+     --peer-trusted-ca-file=/etc/etcd/ca.crt \
+     --peer-client-cert-auth \
+     --client-cert-auth \
+     --initial-advertise-peer-urls https://{{PRIVATE_IP.stdout}}:2380 \
+     --listen-peer-urls https://{{PRIVATE_IP.stdout}}:2380 \
+     --listen-client-urls https://{{PRIVATE_IP.stdout}}:2379,https://127.0.0.1:2379 \
+     --advertise-client-urls https://{{PRIVATE_IP.stdout}}:2379 \
+     --initial-cluster-token etcd-cluster-0 \
+     --initial-cluster etcd01=https://192.168.1.101:2380,etcd02=https://192.168.1.174:2380 \
+     --initial-cluster-state new \
+     --data-dir=/var/lib/etcd
+     Restart=on-failure
+     RestartSec=5
+     [Install]
+     WantedBy=multi-user.target
+
+- name: Open ports
+  firewalld:
+    port: "{{item}}"
+    permanent: true
+    state: enabled
+  with_items:
+    - 2379/tcp
+    - 2380/tcp
+
+- name: Reload firewall
+  service: 
+    name: firewalld
+    state: restarted
+
+- name: Daemon Reload 
+  systemd:
+    daemon_reload: yes
+
+- name: Starting and Enabling ETCD Service
+  service:
+   name: etcd
+   state: started
+   enabled: yes

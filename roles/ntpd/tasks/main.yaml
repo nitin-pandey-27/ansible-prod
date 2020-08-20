@@ -1,0 +1,40 @@
+
+- name: allow ntp through firewall
+  shell: firewall-cmd --add-service=ntp --permanent
+
+- name: firewall reload
+  shell: firewall-cmd --reload
+
+- name: Make sure Chrony is started up
+  service: name=chronyd state=started enabled=yes
+
+- name: set timezone
+  shell: timedatectl set-timezone Asia/Dubai
+
+- name: install ntpd
+  become: yes
+  yum:
+    name: ntp
+    state: present
+
+- name: Copy over the NTP configuration
+  template: src=./templates/ntp.conf dest=/etc/ntp.conf
+
+- name: stop ntpd service
+  become: yes
+  service: 
+    name: ntpd 
+    state: stopped
+  tags: sync-time
+
+- name: sync time
+  shell: ntpdate 3.ae.pool.ntp.org
+  tags: sync-time
+
+- name: start ntpd service
+  become: yes
+  service: 
+    name: ntpd 
+    state: started 
+    enabled: yes
+  tags: sync-time

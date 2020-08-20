@@ -1,0 +1,146 @@
+There are few pre requisites before installing K8s using ansible. 
+
+=====Update the host name on all the systems=====
+
+Type the hostnamectl command :
+
+
+#hostnamectl set-hostname newNameHere
+
+
+Next Edit the /etc/hosts file:
+
+#sudo nano /etc/hosts
+
+Replace any occurrence of the existing computer name with your new one.
+Add all host name in the file 
+  	192.168.1.XXX - master
+	192.168.1.XXX - node01
+	192.168.1.XXX - node02 
+
+
+Reboot the system to make sure that changes are permanent
+
+#sudo reboot								
+
+
+======Generate & Copy the key to all the hosts to allow password less login ==============
+
+- in case you want to create a new user for this please follow this link - 
+https://www.digitalocean.com/community/tutorials/initial-server-setup-with-centos-7
+
+root@infra-virtual-machine:~# ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/root/.ssh/id_rsa):
+Created directory '/root/.ssh'.
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /root/.ssh/id_rsa.
+Your public key has been saved in /root/.ssh/id_rsa.pub.
+The key fingerprint is:
+SHA256:ovNc0gXss5i5yln28PIHvWENlPSQtVnKcG+AiQx9LLY root@infra-virtual-machine
+The key's randomart image is:
++---[RSA 2048]----+
+|      .+ ++*+ .  |
+|       .* O* B   |
+|       .o=  * o  |
+|       .E..  .   |
+|      . S..o     |
+|     . *.++ .    |
+|    o O +o o     |
+|   . B.B  o      |
+|    +.+o+.       |
++----[SHA256]-----+
+root@infra-virtual-machine:~# cat .ssh/id_rsa.pub
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDQzE5S1/9figo306BKvH20DHofJoux8vanxL7dRbe74OrmUPPgtNXtzTKNKJbxwUzzHzT5qteCVonLO0VAuo3B8hAG+fqjLHzez5c5Zwhfe7H4r+u5PG4C66sS9uHpLcpB7gCPg1PpKhwvpn7x0oX4StJdB+DG6DRDtpEICkWVVsTj4xvHj3HEZHrgRKxCp0i2sHICTMnLh5+VEvS9leaBX1JZk8sdYVoKClo/cSGbGixZmoQkTV/OBCUH7qycCxAdcfrSfFvLxz6viVBUifVWss+tBYFTxLLPvuZ3SW59av6CP6oowHcv8dMoggszYQgAFRzH62AaMCxB6azsYKhT root@master
+
+
+
+Copy the public key to other hosts for passwordless authentication. 
+
+root@infra-virtual-machine:~# ssh-copy-id <hostname>
+
+From master node, perform ssh to node01 and node02. It should work fine without asking for any password.
+
+
+
+==================Install ansible on workstation node================================
+
+
+
+- enable epel repo
+#yum install epel-release
+
+[root@master ~]# yum install epel-release
+Loaded plugins: fastestmirror, langpacks
+Determining fastest mirrors
+ * base: mirror.nonstop.co.il
+ * extras: mirror.nonstop.co.il
+ * updates: mirror.nonstop.co.il
+base                                                         | 3.6 kB  00:00:00
+extras                                                       | 2.9 kB  00:00:00
+updates                                                      | 2.9 kB  00:00:00
+(1/4): base/7/x86_64/group_gz                                | 153 kB  00:00:01
+(2/4): extras/7/x86_64/primary_db                            | 205 kB  00:00:02
+(3/4): base/7/x86_64/primar 5% [=                 ] 336 kB/s | 598 kB  00:00:29 ETA 
+..
+..
+..
+..
+Running transaction
+  Installing : epel-release-7-11.noarch                                         1/1
+  Verifying  : epel-release-7-11.noarch                                         1/1
+
+Installed:
+  epel-release.noarch 0:7-11
+
+Complete!
+[root@master ~]#
+
+
+- Once the repository is installed, install Ansible with yum:
+
+#yum install ansible
+
+[root@master ~]# yum install ansible
+Loaded plugins: fastestmirror, langpacks
+Loading mirror speeds from cached hostfile
+epel/x86_64/metalink                                         | 6.2 kB  00:00:00
+...
+...
+...
+ python2-jmespath                       noarch    0.9.4-2.el7       epel       41 k
+ python2-pyasn1                         noarch    0.1.9-7.el7       base      100 k
+ sshpass                                x86_64    1.06-2.el7        extras     21 k
+
+Transaction Summary
+====================================================================================
+Install  1 Package (+18 Dependent packages)
+
+Total download size: 21 M
+Installed size: 123 M
+Is this ok [y/d/N]: y
+...
+...
+...
+  python2-httplib2.noarch 0:0.18.1-3.el7
+  python2-jmespath.noarch 0:0.9.4-2.el7
+  python2-pyasn1.noarch 0:0.1.9-7.el7
+  sshpass.x86_64 0:1.06-2.el7
+
+Complete!
+[root@master ~]#
+
+==================Install git on workstation & clone the git ================================
+
+Install git package 
+
+#yum install git -y 
+
+
+Clone the repository from workstation 
+
+#git clone https://github.com/nitin-pandey-27/ansible-multi-master.git
+
+
+

@@ -1,0 +1,27 @@
+- name: Copy the files to the master servers 
+  shell: |
+   cd /root/k8s-hard-way/certs
+   for instance in master01 master02; do
+   scp ca.crt ca.key kube-apiserver.key kube-apiserver.crt \
+    service-account.key service-account.crt \
+    etcd-server.key etcd-server.crt \
+    admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig \
+    encryption-config.yaml \
+    ${instance}:~/
+   done
+  tags: kube-apiserver
+
+- name: Copy the files to the worker nodes 
+  shell: |
+   cd /root/k8s-hard-way/certs
+   for instance in worker01 worker02; do
+   scp kube-proxy.kubeconfig ca.key ca.crt ${instance}:~/
+   done
+  tags: worker
+
+- name: Copy the files to the ETCD nodes 
+  shell: |
+   cd /root/k8s-hard-way/certs
+   for instance in etcd01 etcd02; do
+   scp ca.crt etcd-server.key etcd-server.crt ${instance}:~/
+   done

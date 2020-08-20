@@ -1,0 +1,74 @@
+- name: Create a directory if it does not exist
+  file:
+    path: /root/k8s-hard-way/certs
+    state: directory
+
+- name: Remove existing kube-apiserver files
+  shell: | 
+   cd /root/k8s-hard-way/certs
+   rm -rf openssl.cnf kube-apiserver.key kube-apiserver.csr kube-apiserver.crt
+  tags: kube-apiserver
+
+- name: Create a kube-apiserver Config File
+  lineinfile:
+    path: /root/k8s-hard-way/certs/openssl.cnf
+    create: yes
+    state: present
+    line: |
+     [req]
+     req_extensions = v3_req
+     distinguished_name = req_distinguished_name
+     [req_distinguished_name]
+     [ v3_req ]
+     basicConstraints = CA:FALSE
+     keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+     subjectAltName = @alt_names
+     [alt_names]
+     DNS.1 = kubernetes
+     DNS.2 = kubernetes.default
+     DNS.3 = kubernetes.default.svc
+     DNS.4 = kubernetes.default.svc.cluster.local
+     IP.1 = 10.96.0.1
+     IP.2 = 192.168.1.195
+     IP.3 = 192.168.1.216 
+     IP.4 = 192.168.1.60
+     IP.5 = 127.0.0.1
+  tags: kube-apiserver
+
+
+- name: Generate certs for kube-api server
+  shell: | 
+    cd /root/k8s-hard-way/certs
+    /usr/bin/openssl genrsa -out kube-apiserver.key 4096
+    /usr/bin/openssl req -new -key kube-apiserver.key -subj "/CN=kube-apiserver" -out kube-apiserver.csr -config /root/k8s-hard-way/certs/openssl.cnf
+    /usr/bin/openssl x509 -req -in kube-apiserver.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out kube-apiserver.crt -extensions v3_req \ 
+    -extfile /root/k8s-hard-way/certs/openssl.cnf -days 1000
+  tags: kube-apiserver
+
+- name: Create a ETCD-Server Config File
+  lineinfile:
+    path: /root/k8s-hard-way/certs/openssl-etcd.cnf
+    create: yes
+    state: present
+    line: |
+     [req]
+     req_extensions = v3_req
+     distinguished_name = req_distinguished_name
+     [req_distinguished_name]
+     [ v3_req ]
+     basicConstraints = CA:FALSE
+     keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+     subjectAltName = @alt_names
+     [alt_names]
+     IP.1 = 192.168.1.101
+     IP.2 = 192.168.1.174
+     IP.3 = 127.0.0.1     
+
+- name: Generate certs for ETCD
+  shell: |
+    cd /root/k8s-hard-way/certs
+    /usr/bin/openssl genrsa -out etcd-server.key 4096
+    /usr/bin/openssl req -new -key etcd-server.key -subj "/CN=etcd-server" -out etcd-server.csr -config /root/k8s-hard-way/certs/openssl-etcd.cnf
+    /usr/bin/openssl x509 -req -in etcd-server.csr -CA ca.crt -CAkey ca.key -CAcreateserial  -out etcd-server.crt -extensions v3_req \ 
+    -extfile /root/k8s-hard-way/certs/openssl-etcd.cnf -days 1000
+

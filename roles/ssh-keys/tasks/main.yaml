@@ -1,0 +1,22 @@
+- name: Generate SSH keys on workstation node
+  shell: ssh-keygen -b 4096 -t rsa -f /root/.ssh/id_rsa -q -N ""
+  args:
+    creates: /root/.ssh/id_rsa
+
+- name: fetch all public ssh keys
+  shell: cat ~/.ssh/id_rsa.pub
+  register: ssh_keys
+  tags:
+  - ssh
+
+- name: check keys
+  debug: msg="{{ ssh_keys.stdout }}"
+  tags:
+  - ssh
+
+- name: deploy keys on all servers
+  authorized_key: user=root key="{{ item[0] }}"
+  delegate_to: "{{ item[1] }}"
+  with_nested:
+  - "{{ ssh_keys.stdout }}"
+  - "{{groups['k8s-nodes']}}"

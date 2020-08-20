@@ -1,0 +1,6 @@
+- hosts: dc1-k8s-masters
+  become: yes
+  roles:
+    - k8s-control-plane
+
+

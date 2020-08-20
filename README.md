@@ -85,19 +85,6 @@ Thu Aug 20 16:29:06 +04 2020
 #ansible all -i inventory/mycluster -m shell -a "docker version" | grep -C 2 CHANGED			
 OUTPUT -
 worker02 | CHANGED | rc=0 >>
-Client: Docker Engine - Community
- Version:           19.03.12
---
-  Version:          0.18.0
-  GitCommit:        fec3683
-worker01 | CHANGED | rc=0 >>
-Client: Docker Engine - Community
- Version:           19.03.12
---
-...
-...
-...
-... For all other nodes 
 
 
 

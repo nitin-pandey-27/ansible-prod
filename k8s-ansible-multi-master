@@ -26,6 +26,11 @@ FOLLOW PRE-REQUISITES FILE TO CONFIRM THAT SSH KEYS HAVE BEEN CREATED.
 YOU SHOULD ALSO CHECK THAT PASSWORDLESS SSH IS WORKING FROM - WORKSTATION - TO ALL OTHER NODES. 
 ADD HOSTNAMES ON ALL THE /etc/hosts FILE OF ALL THE HOSTS.
 
+I AM DOING THIS ON 6 NODES -
+2 MASTER NODE - MASTER01 / MASTER02
+2 ETCD NODE   - ETCD01 / ETCD02
+2 WORKER NODE - WORKER01 / WORKER02
+
 
 
 
@@ -268,6 +273,13 @@ Edit below lines in - roles/etcd-cluster/tasks/main.yaml.
 --> this will apply the playbook 
 #ansible-playbook -v -i inventory/mycluster playbooks/etcd-cluster.yaml						
 	
+--> This will list the etcd cluster from workstation
+#ansible dc1-k8s-etcd-vm -i inventory/mycluster -m shell -a "ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379  --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/etcd-server.crt --key=/etc/etcd/etcd-server.key"
+OUTPUT
+1bb85f91c96af39d, started, etcd02, https://192.168.1.174:2380, https://192.168.1.174:2379
+9f5e0acc1f346641, started, etcd01, https://192.168.1.101:2380, https://192.168.1.101:2379
+
+
 --> This command will list the etcd servers. Run this from all ETCD nodes. 
 #ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379  --cacert=/etc/etcd/ca.crt --cert=/etc/etcd/etcd-server.crt --key=/etc/etcd/etcd-server.key
 OUTPUT 

@@ -29,7 +29,7 @@ Reboot the system to make sure that changes are permanent
 - in case you want to create a new user for this please follow this link - 
 https://www.digitalocean.com/community/tutorials/initial-server-setup-with-centos-7
 
-root@infra-virtual-machine:~# ssh-keygen
+root@infra-virtual-machine:~# ssh-keygen -b 4096
 Generating public/private rsa key pair.
 Enter file in which to save the key (/root/.ssh/id_rsa):
 Created directory '/root/.ssh'.

@@ -29,8 +29,8 @@
      DNS.3 = kubernetes.default.svc
      DNS.4 = kubernetes.default.svc.cluster.local
      IP.1 = 10.96.0.1
-     IP.2 = 192.168.1.195
-     IP.3 = 192.168.1.216 
+     IP.2 = 192.168.1.192
+     IP.3 = 192.168.1.139 
      IP.4 = 192.168.1.60
      IP.5 = 127.0.0.1
   tags: kube-apiserver
@@ -60,8 +60,8 @@
      keyUsage = nonRepudiation, digitalSignature, keyEncipherment
      subjectAltName = @alt_names
      [alt_names]
-     IP.1 = 192.168.1.101
-     IP.2 = 192.168.1.174
+     IP.1 = 192.168.1.120
+     IP.2 = 192.168.1.135
      IP.3 = 127.0.0.1     
 
 - name: Generate certs for ETCD

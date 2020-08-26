@@ -56,8 +56,8 @@
        mode tcp
        balance roundrobin
        option tcp-check
-       server master01 192.168.1.195:6443 check fall 3 rise 2
-       server master02 192.168.1.216:6443 check fall 3 rise 2
+       server master01 192.168.1.192:6443 check fall 3 rise 2
+       server master02 192.168.1.139:6443 check fall 3 rise 2
      listen stats # Define a listen section called "stats"
        bind 192.168.1.60:9000 # Listen on localhost:9000
        mode http

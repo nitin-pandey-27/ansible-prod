@@ -97,9 +97,9 @@
   shell: |
    cd /root/
    /usr/bin/wget \    
-   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubectl" \
-   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kube-proxy" \
-   "https://storage.googleapis.com/kubernetes-release/release/v1.13.0/bin/linux/amd64/kubelet"
+   "https://storage.googleapis.com/kubernetes-release/release/v1.18.6/bin/linux/amd64/kubectl" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.18.6/bin/linux/amd64/kube-proxy" \
+   "https://storage.googleapis.com/kubernetes-release/release/v1.18.6/bin/linux/amd64/kubelet"
    chmod +x kubectl kube-proxy kubelet
    /usr/bin/cp kubectl kube-proxy kubelet /usr/local/bin/
    mkdir -p \

@@ -60,7 +60,7 @@
      --listen-client-urls https://{{PRIVATE_IP.stdout}}:2379,https://127.0.0.1:2379 \
      --advertise-client-urls https://{{PRIVATE_IP.stdout}}:2379 \
      --initial-cluster-token etcd-cluster-0 \
-     --initial-cluster etcd01=https://192.168.1.101:2380,etcd02=https://192.168.1.174:2380 \
+     --initial-cluster etcd01=https://192.168.1.120:2380,etcd02=https://192.168.1.135:2380 \
      --initial-cluster-state new \
      --data-dir=/var/lib/etcd
      Restart=on-failure

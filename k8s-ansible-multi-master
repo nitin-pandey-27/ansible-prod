@@ -308,6 +308,10 @@ Enter correct ETCD server IP address.
 --> this will apply the playbook
 #ansible-playbook -v -i inventory/mycluster playbooks/k8s-control-plane.yaml					 
 
+
+--> Check status from ansible
+#ansible  dc1-k8s-masters -v -i inventory/mycluster -m shell -a "kubectl get componentstatuses --kubeconfig admin.kubeconfig"
+
 --> Run this from both master
 #kubectl get componentstatuses --kubeconfig admin.kubeconfig	
 OUTPUT 
@@ -319,6 +323,10 @@ etcd-0               Healthy   {"health":"true"}
 
 --> If you want to run only for master. Only required for re executing it for kube-apiserver. 
 #ansible-playbook -v -i inventory/mycluster playbooks/k8s-control-plane.yaml --tags=kube-apiserver	
+
+
+--> If you want to check the health from workstation -
+#ansible  dc1-k8s-masters -v -i inventory/mycluster -m shell -a "kubectl get componentstatuses --kubeconfig admin.kubeconfig"
 
 
 ---> From all the master nodes, check status of each services 

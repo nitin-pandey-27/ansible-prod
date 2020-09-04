@@ -17,6 +17,7 @@
     state: enabled
   with_items:
     - 6784/tcp
+    - 6784/udp
   tags: weave
 
 
@@ -60,7 +61,7 @@
 
 - name: Deploy core-dns 
   shell: | 
-   /usr/local/bin/kubectl apply -f https://raw.githubusercontent.com/mmumshad/kubernetes-the-hard-way/master/deployments/coredns.yaml
+   wget  https://storage.googleapis.com/kubernetes-the-hard-way/coredns-1.7.0.yaml
   tags: dns
 
     

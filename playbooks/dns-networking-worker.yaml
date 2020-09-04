@@ -1,4 +1,4 @@
-- hosts: dc1-k8s-workers-vm
+- hosts: k8s-nodes
   become: yes
   roles:
     - dns-networking-worker

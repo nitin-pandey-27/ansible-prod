@@ -10,6 +10,8 @@
     - 9153/tcp
     - 8080/tcp
     - 6783/tcp
+    - 6783/tcp
+    - 6783/udp
 
 
 - name: Firewalld restart

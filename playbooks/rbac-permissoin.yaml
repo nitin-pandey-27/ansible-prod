@@ -1,4 +1,4 @@
-- hosts: master01
+- hosts: dc1-k8s-masters
   become: yes
   roles:
     - rbac-permissoin

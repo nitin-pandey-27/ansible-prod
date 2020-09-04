@@ -1,4 +1,4 @@
-- hosts: master01
+- hosts: master02
   become: yes
   roles:
     - dns-networking

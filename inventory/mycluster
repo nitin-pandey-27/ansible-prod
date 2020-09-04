@@ -3,24 +3,24 @@ loadbalancer ansible_host=192.168.1.60
 
 [k8s-nodes]
 loadbalancer ansible_host=192.168.1.60
-master01 ansible_host=192.168.1.133
-master02 ansible_host=192.168.1.120
-worker01 ansible_host=192.168.1.166
-worker02 ansible_host=192.168.1.210
-etcd01 ansible_host=192.168.1.128
-etcd02 ansible_host=192.168.1.63
+master01 ansible_host=192.168.1.68
+master02 ansible_host=192.168.1.19
+worker01 ansible_host=192.168.1.43
+worker02 ansible_host=192.168.1.129
+etcd01 ansible_host=192.168.1.24
+etcd02 ansible_host=192.168.1.175
 
 [dc1-k8s-masters]
-master01 ansible_host=192.168.1.133
-master02 ansible_host=192.168.1.120
+master01 ansible_host=192.168.1.68
+master02 ansible_host=192.168.1.19
 
 [dc1-k8s-workers-vm]
-worker01 ansible_host=192.168.1.166
-worker02 ansible_host=192.168.1.210
+worker01 ansible_host=192.168.1.43
+worker02 ansible_host=192.168.1.129
 
 [dc1-k8s-etcd-vm]
-etcd01 ansible_host=192.168.1.128
-etcd02 ansible_host=192.168.1.63
+etcd01 ansible_host=192.168.1.24
+etcd02 ansible_host=192.168.1.175
 
 [dc1-k8s-lb-vm]
 loadbalancer ansible_host=192.168.1.60
